@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Araucária Florestal – Gestão de Pneus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; background:#09090b; color:#f4f4f5; }
+    header { display:flex; align-items:center; gap:16px; padding:16px; background:#020617; }
+    header img { height:50px; }
+    h1 { font-size:20px; }
+    .upload, .cards { display:flex; gap:12px; padding:16px; flex-wrap:wrap; }
+    .card { background:#18181b; padding:16px; border-radius:8px; min-width:150px; }
+    .card span { color:#a1a1aa; font-size:13px; }
+    .card strong { font-size:26px; }
+    .charts { padding:16px; display:grid; grid-template-columns:1fr; gap:24px; }
+    canvas { background:#020617; padding:12px; border-radius:8px; }
+    @media (min-width: 768px) {
+      .charts { grid-template-columns:1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="https://i.imgur.com/8dGQH5L.png" alt="Araucária Florestal">
+  <h1>Araucária Florestal – Gestão de Pneus (SISMA)</h1>
+</header>
+
+<section class="upload">
+  <div>
+    <label>Inventário Atual</label><br>
+    <input type="file" id="fileAtual">
+  </div>
+  <div>
+    <label>Inventário Mês Anterior</label><br>
+    <input type="file" id="fileAnterior">
+  </div>
+</section>
+
+<section class="cards">
+  <div class="card"><span>Total Atual</span><br><strong id="totalAtual">0</strong></div>
+  <div class="card"><span>Total Anterior</span><br><strong id="totalAnterior">0</strong></div>
+  <div class="card"><span>Variação (%)</span><br><strong id="variacao">0%</strong></div>
+</section>
+
+<section class="charts">
+  <canvas id="graficoEstado"></canvas>
+  <canvas id="graficoVida"></canvas>
+</section>
+
+<script>
+let atual = [], anterior = [];
+let chartEstado, chartVida;
+
+document.getElementById("fileAtual").addEventListener("change", e => {
+  Papa.parse(e.target.files[0], { header:true, complete:r => { atual=r.data; atualizar(); }});
+});
+document.getElementById("fileAnterior").addEventListener("change", e => {
+  Papa.parse(e.target.files[0], { header:true, complete:r => { anterior=r.data; atualizar(); }});
+});
+
+function atualizar() {
+  document.getElementById("totalAtual").innerText = atual.length;
+  document.getElementById("totalAnterior").innerText = anterior.length;
+  let v = anterior.length ? ((atual.length-anterior.length)/anterior.length*100).toFixed(1) : 0;
+  document.getElementById("variacao").innerText = v + "%";
+  desenharGrafico("Estado","graficoEstado","Evolução por Estado", chartEstado, c => chartEstado=c);
+  desenharGrafico("Vida","graficoVida","Evolução por Vida", chartVida, c => chartVida=c);
+}
+
+function desenharGrafico(campo,id,titulo,chartRef,setRef){
+  const mA={}, mB={};
+  atual.forEach(d=>mA[d[campo]]=(mA[d[campo]]||0)+1);
+  anterior.forEach(d=>mB[d[campo]]=(mB[d[campo]]||0)+1);
+  const labels=[...new Set([...Object.keys(mA),...Object.keys(mB)])];
+  if(chartRef) chartRef.destroy();
+  setRef(new Chart(document.getElementById(id),{
+    type:'bar',
+    data:{labels,
+      datasets:[
+        {label:'Mês Anterior',data:labels.map(l=>mB[l]||0),backgroundColor:'#3b82f6'},
+        {label:'Mês Atual',data:labels.map(l=>mA[l]||0),backgroundColor:'#22c55e'}
+      ]},
+    options:{plugins:{title:{display:true,text:titulo,color:'#f4f4f5'}}}
+  }));
+}
+</script>
+
+</body>
+</html>
+
